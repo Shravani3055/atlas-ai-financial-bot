@@ -2,10 +2,8 @@ import os
 import google.generativeai as genai
 from prompt import SYSTEM_PROMPT
 
-# Configure API
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Model
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 def ask_gemini(user_message):
@@ -14,7 +12,6 @@ def ask_gemini(user_message):
 
         response = model.generate_content(full_prompt)
 
-        # Safety check
         if not response or not response.text:
             return "⚠️ No response from AI"
 
