@@ -1,5 +1,6 @@
 import re
 import asyncio
+import traceback
 
 from finance_service import check_budget_alert
 
@@ -22,7 +23,6 @@ from memory import (
     update_name,
     update_allowance,
     get_user,
-    get_conversation,
     update_conversation,
     clear_expenses,
     add_expense,
@@ -51,7 +51,7 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"👤 Profile\n\n"
         f"Name: {name or 'Not set'}\n"
-        f"Budget: ₹{allowance if allowance else 'Not set'}"
+        f"Budget: ₹{allowance if allowance is not None else 'Not set'}"
     )
 
 # ✅ RESET
@@ -73,6 +73,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ✅ MAIN CHAT
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
+
     user_message = update.message.text
     msg = user_message.lower()
     telegram_id = update.effective_user.id
@@ -96,14 +99,14 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 🔹 STATUS
     if any(word in msg for word in ["status", "summary", "report"]):
         total_spent = get_total_spent(telegram_id)
-        remaining = allowance - total_spent if allowance else None
+        remaining = allowance - total_spent if allowance is not None else None
         top_category = get_top_category(telegram_id)
 
         await update.message.reply_text(
             f"📊 Status\n\n"
             f"Budget: ₹{allowance}\n"
             f"Spent: ₹{total_spent}\n"
-            f"Remaining: ₹{remaining if remaining else 'unknown'}\n"
+            f"Remaining: ₹{remaining if remaining is not None else 'unknown'}\n"
             f"Top category: {top_category if top_category else 'N/A'}"
         )
         return
@@ -113,7 +116,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if add_budget_match:
         amount = int(add_budget_match.group(1))
 
-        if allowance:
+        if allowance is not None:
             new_budget = allowance + amount
             update_allowance(telegram_id, new_budget)
             await update.message.reply_text(f"💰 New budget: ₹{new_budget}")
@@ -135,7 +138,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if income_match:
         amount = int(income_match.group(1))
 
-        if allowance:
+        if allowance is not None:
             new_budget = allowance + amount
             update_allowance(telegram_id, new_budget)
             await update.message.reply_text(f"💰 New budget: ₹{new_budget}")
@@ -154,13 +157,13 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
             add_expense(telegram_id, int(amount), category or "general")
 
         total_spent = get_total_spent(telegram_id)
-        remaining = allowance - total_spent if allowance else None
+        remaining = allowance - total_spent if allowance is not None else None
 
         await update.message.reply_text(
             f"💸 Total spent: ₹{total_spent}\nRemaining: ₹{remaining}"
         )
 
-        # ✅ 🔥 CENTRALIZED ALERT (NEW)
+        # 🔥 ALERT
         alert = check_budget_alert(total_spent, allowance)
         if alert:
             await update.message.reply_text(alert)
@@ -176,7 +179,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 🔹 AI RESPONSE
     total_spent = get_total_spent(telegram_id)
-    remaining = allowance - total_spent if allowance else None
+    remaining = allowance - total_spent if allowance is not None else None
 
     context_message = f"""
 Budget: {allowance}
@@ -197,9 +200,9 @@ User: {user_message}
 
         await update.message.reply_text(reply)
 
-    except Exception as e:
-        print("ERROR:", e)
-        await update.message.reply_text("⚠️ Error occurred")
+    except Exception:
+        traceback.print_exc()
+        await update.message.reply_text("⚠️ Something went wrong")
 
 # ✅ MAIN
 def main():
