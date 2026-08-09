@@ -50,3 +50,6 @@ def ask_gemini(user_message):
         print("❌ GEMINI ERROR:", str(e))
         traceback.print_exc()
         return "⚠️ Gemini error occurred"
+    
+def ask_gemini(user_message):
+    return "💡 Tip: Track your expenses, set a budget, and avoid unnecessary spending to save money."
