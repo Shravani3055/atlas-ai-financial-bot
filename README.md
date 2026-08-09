@@ -1,31 +1,30 @@
 # Atlas AI Financial Assistant 🤖
 
-A Telegram bot to track expenses, manage budgets, and get AI-based financial advice.
+A Telegram bot that helps users track expenses, manage budgets, and receive AI-powered financial insights.
+
+---
 
 ## 🚀 Features
-- Track expenses using natural language
-- Set and update budget
-- Category-based spending insights
-- AI-powered financial suggestions
+
+- Track expenses using natural language  
+- Set and update budget  
+- View spending summary and top categories  
+- Get AI-based financial advice using Gemini  
+
+---
 
 ## 🛠 Tech Stack
-- Python
-- python-telegram-bot
-- SQLite
-- Gemini API
 
-## ▶️ How to Run
-1. Clone repo
-2. Add `.env` file:
-   TELEGRAM_BOT_TOKEN=your_token  
-   GEMINI_API_KEY=your_key  
+- Python  
+- python-telegram-bot  
+- SQLite  
+- Google Gemini API  
 
-3. Install dependencies:
-   pip install -r requirements.txt
+---
 
-4. Run:
-   python app.py
+## ▶️ How to Run Locally
 
-## 🌐 Deployment
-Deploy on Render using:
-Start command: `python app.py`
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Shravani3055/atlas-ai-financial-bot.git
+   cd atlas-ai-financial-bot
