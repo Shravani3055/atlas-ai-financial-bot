@@ -1,10 +1,7 @@
 import os
-print("TOKEN VALUE:", os.getenv("TELEGRAM_BOT_TOKEN"))
 import re
 import asyncio
 import traceback
-
-from finance_service import check_budget_alert
 
 from telegram import Update
 from telegram.constants import ChatAction
@@ -16,9 +13,9 @@ from telegram.ext import (
     filters,
 )
 
-from config import TELEGRAM_BOT_TOKEN
 from database import create_tables
 from gemini_service import ask_gemini
+from finance_service import check_budget_alert
 
 from memory import (
     create_user,
@@ -32,14 +29,20 @@ from memory import (
     get_top_category
 )
 
-# ✅ START
+# ✅ TOKEN FROM ENV (Railway safe)
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+if not TOKEN:
+    raise ValueError("❌ TELEGRAM_BOT_TOKEN not set in environment")
+
+# -------------------- COMMANDS --------------------
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "👋 Hi! I'm Atlas — your AI Financial Assistant.\n"
         "Track spending, set budgets, and get smart advice. 📊"
     )
 
-# ✅ PROFILE
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     user_data = get_user(telegram_id)
@@ -56,13 +59,11 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Budget: ₹{allowance if allowance is not None else 'Not set'}"
     )
 
-# ✅ RESET
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     clear_expenses(telegram_id)
     await update.message.reply_text("🗑️ All expenses cleared.")
 
-# ✅ HELP
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "/start\n/profile\n/reset\n/help\n\n"
@@ -73,7 +74,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "status"
     )
 
-# ✅ MAIN CHAT
+# -------------------- MAIN CHAT --------------------
+
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
@@ -81,6 +83,8 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
     msg = user_message.lower()
     telegram_id = update.effective_user.id
+
+    print("📩 User:", user_message)
 
     create_user(telegram_id)
 
@@ -165,12 +169,12 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"💸 Total spent: ₹{total_spent}\nRemaining: ₹{remaining}"
         )
 
-        # 🔥 ALERT
+        # ALERT
         alert = check_budget_alert(total_spent, allowance)
         if alert:
             await update.message.reply_text(alert)
 
-        # 🔹 TOP CATEGORY
+        # TOP CATEGORY
         top_category = get_top_category(telegram_id)
         if top_category:
             await update.message.reply_text(
@@ -179,7 +183,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    # 🔹 AI RESPONSE
+    # 🔹 AI RESPONSE (fallback)
     total_spent = get_total_spent(telegram_id)
     remaining = allowance - total_spent if allowance is not None else None
 
@@ -197,20 +201,24 @@ User: {user_message}
             action=ChatAction.TYPING,
         )
 
+        print("🤖 Calling Gemini...")
+
         reply = await asyncio.to_thread(ask_gemini, context_message)
+
         update_conversation(telegram_id, user_message)
 
         await update.message.reply_text(reply)
 
     except Exception:
         traceback.print_exc()
-        await update.message.reply_text("⚠️ Something went wrong")
+        await update.message.reply_text("⚠️ AI failed. Try again later.")
 
-# ✅ MAIN
+# -------------------- MAIN --------------------
+
 def main():
     create_tables()
 
-    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("profile", profile))
