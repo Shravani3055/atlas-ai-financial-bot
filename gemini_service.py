@@ -1,3 +1,11 @@
+print("🚀 Testing Gemini import...")
+
+try:
+    import google.generativeai as genai
+    print("✅ Gemini imported successfully")
+except Exception as e:
+    print("❌ Gemini import failed:", e)
+    
 import os
 import google.generativeai as genai
 import traceback
