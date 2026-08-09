@@ -1,3 +1,5 @@
+import os
+print("TOKEN VALUE:", os.getenv("TELEGRAM_BOT_TOKEN"))
 import re
 import asyncio
 import traceback
