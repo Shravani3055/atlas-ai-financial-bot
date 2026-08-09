@@ -22,20 +22,20 @@ from memory import (
     update_name,
     update_allowance,
     get_user,
-    update_conversation,
     clear_expenses,
     add_expense,
     get_total_spent,
     get_top_category
 )
 
-# ✅ TOKEN
+# ================== TOKEN ==================
+
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 if not TOKEN:
     raise ValueError("❌ TELEGRAM_BOT_TOKEN not set")
 
-# -------------------- COMMANDS --------------------
+# ================== COMMANDS ==================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -70,19 +70,17 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Examples:\n"
         "budget is 8000\n"
         "spent 300 on food\n"
-        "added 500\n"
         "status"
     )
 
-# -------------------- MAIN CHAT --------------------
+# ================== MAIN CHAT ==================
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        print("🔥 CHAT FUNCTION TRIGGERED")
+    if not update.message or not update.message.text:
+        return
 
-        if not update.message or not update.message.text:
-            print("⚠️ No message content")
-            return
+    try:
+        print("🔥 CHAT TRIGGERED")
 
         user_message = update.message.text
         msg = user_message.lower()
@@ -92,7 +90,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         create_user(telegram_id)
 
-        # NAME
+        # -------- NAME --------
         name_match = re.search(r"(?:my name is|i am)\s+(\w+)", msg)
         if name_match:
             update_name(telegram_id, name_match.group(1).capitalize())
@@ -100,10 +98,10 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_data = get_user(telegram_id)
         name, allowance = (user_data if user_data else (None, None))
 
-        # STATUS
+        # -------- STATUS --------
         if any(word in msg for word in ["status", "summary", "report"]):
             total_spent = get_total_spent(telegram_id)
-            remaining = allowance - total_spent if allowance is not None else None
+            remaining = allowance - total_spent if allowance else None
             top_category = get_top_category(telegram_id)
 
             await update.message.reply_text(
@@ -115,7 +113,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        # SET BUDGET
+        # -------- SET BUDGET --------
         if "budget" in msg:
             match = re.search(r"(\d+)", msg)
             if match:
@@ -124,7 +122,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(f"💰 Budget set: ₹{amount}")
                 return
 
-        # EXPENSE
+        # -------- EXPENSE --------
         spend_matches = re.findall(
             r"(?:spent|pay|paid|bought)\s*(\d+)\s*(?:on\s*(\w+))?",
             msg
@@ -135,7 +133,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 add_expense(telegram_id, int(amount), category or "general")
 
             total_spent = get_total_spent(telegram_id)
-            remaining = allowance - total_spent if allowance is not None else None
+            remaining = allowance - total_spent if allowance else None
 
             await update.message.reply_text(
                 f"💸 Total spent: ₹{total_spent}\nRemaining: ₹{remaining}"
@@ -147,37 +145,36 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             return
 
-        # 🔥 AI FALLBACK
+        # ================= AI FALLBACK =================
         print("🤖 Going to Gemini...")
-
-        context_message = f"""
-Budget: {allowance}
-Spent: {get_total_spent(telegram_id)}
-
-User: {user_message}
-"""
 
         await context.bot.send_chat_action(
             chat_id=update.effective_chat.id,
             action=ChatAction.TYPING,
         )
 
-        reply = await asyncio.to_thread(ask_gemini, context_message)
+        # ⚠️ SAFE CALL (THIS FIXES YOUR CRASH)
+        loop = asyncio.get_running_loop()
+        reply = await loop.run_in_executor(
+            None,
+            ask_gemini,
+            user_message  # KEEP SIMPLE (no context for now)
+        )
 
-        print("✅ Gemini replied")
+        print("✅ Gemini reply:", reply)
+
+        if not reply:
+            reply = "⚠️ AI gave empty response"
 
         await update.message.reply_text(reply)
 
     except Exception as e:
-        print("❌ CHAT ERROR:", str(e))
+        print("❌ FULL ERROR:")
         traceback.print_exc()
 
-        try:
-            await update.message.reply_text("⚠️ Something broke internally")
-        except:
-            pass
+        await update.message.reply_text(f"❌ Error:\n{str(e)}")
 
-# -------------------- MAIN --------------------
+# ================== MAIN ==================
 
 def main():
     create_tables()
@@ -194,6 +191,7 @@ def main():
     print("🤖 Bot running...")
     app.run_polling()
 
-# ✅ FIXED ENTRY POINT
+# ================== ENTRY ==================
+
 if __name__ == "__main__":
     main()
