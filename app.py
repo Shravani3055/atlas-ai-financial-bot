@@ -1,4 +1,3 @@
-print("🔥 THIS IS MY NEW CODE RUNNING 🔥")
 import re
 import asyncio
 import traceback
